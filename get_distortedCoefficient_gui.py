@@ -44,7 +44,16 @@ class Get_distort_coefficient:
         print("拟合参数:")
         print("a =", popt[0])
         print("b =", popt[1])
-        return popt
+
+
+        # 计算R²值
+        dev_fit = self.dev_function(posi_camera, *popt)
+        ss_res = np.sum((dev - dev_fit) ** 2)
+        ss_tot = np.sum((dev - np.mean(dev)) ** 2)
+        r_squared = 1 - (ss_res / ss_tot)
+        print("R² =", r_squared)
+
+        return popt, r_squared
     
     def work(self):
         """
@@ -109,8 +118,11 @@ class Get_distort_coefficient:
         posi_ideal = df['posi_ideal'].to_numpy()
         
         # TODO: 计算畸变系数
-        distorted_Coeffi = self.get_distorted_Coeffi(posi_camera, posi_ideal)
-        dev_fit = self.dev_function(posi_camera, distorted_Coeffi[0], distorted_Coeffi[1], distorted_Coeffi[2])
+        # 获取拟合参数和R²值
+        popt, r_squared = self.get_distorted_Coeffi(posi_camera, posi_ideal)
+        distorted_Coeffi = popt
+        # 计算拟合曲线
+        dev_fit = self.dev_function(posi_camera, *popt)
         
         # 创建畸变曲线图并保存到文件
         fig, ax = plt.subplots(figsize=(8, 6))
@@ -134,7 +146,8 @@ class Get_distort_coefficient:
         plt.close(fig)
         
         print(f"返回结果: result_image shape={result_image.shape}, fitting_image size={fitting_image.size}")
-        return dev_fit, posi_camera-posi_ideal, distorted_Coeffi, df, result_image, fitting_image
+        # 返回拟合值、实际偏差、拟合系数、R²、数据表和图片
+        return dev_fit, posi_camera-posi_ideal, distorted_Coeffi, r_squared, df, result_image, fitting_image
 
 class ROISelector:
     def __init__(self, canvas, image, status_callback=None):
@@ -763,11 +776,11 @@ class DistortionCoefficientGUI:
                 iou_threshold=self.iou_threshold.get()
             )
             
-            # 执行计算
-            dev_pred, dev_true, distorted_coeffi, df, result_image, fitting_image = calculator.work()
+            # 执行计算 (返回拟合值、真实偏差、拟合系数、R²、df、匹配图、拟合图)
+            dev_pred, dev_true, distorted_coeffi, r_squared, df, result_image, fitting_image = calculator.work()
             
-            # 显示结果
-            self.display_results(dev_pred, dev_true, distorted_coeffi, df, result_image, fitting_image)
+            # 显示结果（包含R²）
+            self.display_results(dev_pred, dev_true, distorted_coeffi, r_squared, df, result_image, fitting_image)
             
             # 显示成功消息
             messagebox.showinfo("成功", "计算完成！结果已保存到文件。")
@@ -782,7 +795,7 @@ class DistortionCoefficientGUI:
             import traceback
             traceback.print_exc()
     
-    def display_results(self, dev_pred, dev_true, distorted_coeffi, df, result_image, fitting_image):
+    def display_results(self, dev_pred, dev_true, distorted_coeffi, r_squared, df, result_image, fitting_image):
         # 清空结果文本区域
         self.result_text.delete(1.0, tk.END)
         
@@ -791,6 +804,7 @@ class DistortionCoefficientGUI:
         result_text += f"三次项系数 a (畸变系数): {distorted_coeffi[0]}\n"
         result_text += f"二次项系数 b (固定偏置): {distorted_coeffi[1]}\n"
         result_text += f"一次项系数 c (容差): {distorted_coeffi[2]}\n\n"
+        result_text += f"拟合优度 R²: {r_squared:.6f}\n"
         
         # 判断畸变类型
         if distorted_coeffi[0] > 0:
@@ -806,6 +820,8 @@ class DistortionCoefficientGUI:
         result_text += f"相机位置 (posi_camera):\n"
         result_text += f"  最小值: {np.min(df['posi_camera']):.2f}\n"
         result_text += f"  最大值: {np.max(df['posi_camera']):.2f}\n\n"
+        maxView = np.max(df['posi_camera']) - np.min(df['posi_camera'])
+        result_text += f"最大视野范围 ({maxView:.2f}):\n\n"
 
         
         result_text += f"理想位置 (posi_ideal):\n"
@@ -815,7 +831,8 @@ class DistortionCoefficientGUI:
         
         result_text += f"偏差值 (dev):\n"
         result_text += f"  最小值: {np.min(dev_true):.2f}\n"
-        result_text += f"  最大值: {np.max(dev_true):.2f}\n\n"
+        result_text += f"  最大值: {np.max(dev_true):.2f}\n"
+        result_text += f"最大畸变量: ({np.min(dev_true/4528):.5f}, {np.max(dev_true/4528):.5f})\n\n"
 
         
         result_text += f"结果已保存到:\n"
