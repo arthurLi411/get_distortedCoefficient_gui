@@ -1,0 +1,4 @@
+# Ignore distribution artifacts and built executables
+dist/
+# Ignore any executables (adjust if you need to keep some .exe files in repo)
+*.exe
