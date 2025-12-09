@@ -104,7 +104,3 @@ pyinstaller --onefile --windowed get_distortedCoefficient_gui.py
 本仓库未注明具体许可证。若需要在工程中使用或发布，请自行补充许可证信息（例如 MIT）。
 
 如需帮助或发现 bug，请在项目中打开 issue，或直接联系维护者（在项目中添加联系方式）。
-
----
-
-感谢使用本工具，如果你希望 README 增加示例截图、快速演示视频或更详细的打包说明，我可以继续补充。
