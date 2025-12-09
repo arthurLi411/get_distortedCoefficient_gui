@@ -3,7 +3,7 @@
 @File    : Tools for Template Matching and get distorted coefficient GUI
 @Author  : Cichun Li
 @Date    : 2025-12-08
-@Copyright (c) 2025 Cichun Li, Alphabetter Inc. All rights reserved.
+@Copyright (c) 2025 Cichun Li, Alphabetter Co., Ltd. All rights reserved.
 """
 
 
