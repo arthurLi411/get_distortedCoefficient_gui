@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+@File    : Tools for Template Matching and get distorted coefficient GUI
+@Author  : Cichun Li
+@Date    : 2025-12-08
+@Copyright (c) 2025 Cichun Li, Alphabetter Inc. All rights reserved.
+"""
+
+
 import cv2
 import numpy as np
 import pandas as pd
@@ -6,7 +15,7 @@ import matplotlib.pyplot as plt
 from tempMatcher import TemplateMatcher
 import tkinter as tk
 from tkinter import ttk, filedialog, messagebox
-from PIL import Image, ImageTk
+from PIL import Image, ImageTk, ImageDraw, ImageFont
 import os
 
 class Get_distort_coefficient:
@@ -243,6 +252,10 @@ class DistortionCoefficientGUI:
         self.scale_factor = 1.0
         self.canvas_offset_x = 0
         self.canvas_offset_y = 0
+        # 从模块顶层 docstring 提取水印文本（回退为空字符串）
+        header_lines = [ln.strip() for ln in (__doc__ or "").splitlines() if ln.strip()]
+        # 合并为单行水印，尽量简短
+        self.watermark_text = "  —  ".join(header_lines)
         
         # 性能优化：添加缩放缓存和节流
         self.scaled_image_cache = {}  # 缓存不同缩放比例的图像
@@ -518,6 +531,12 @@ class DistortionCoefficientGUI:
                     resampling_method = Image.Resampling.LANCZOS
                 
                 scaled_image = self.original_image.resize((new_width, new_height), resampling_method)
+                # 在显示前添加水印（轻度半透明，作为背景水印）
+                try:
+                    scaled_image = self._apply_watermark(scaled_image)
+                except Exception:
+                    # 若水印过程失败，回退到原图像
+                    pass
                 photo = ImageTk.PhotoImage(scaled_image)
                 self.scaled_image_cache[cache_key] = photo
             
@@ -568,6 +587,11 @@ class DistortionCoefficientGUI:
                 
                 # 调整图像大小
                 scaled_image = self.original_image.resize((new_width, new_height), resampling_method)
+                # 在显示前添加水印
+                try:
+                    scaled_image = self._apply_watermark(scaled_image)
+                except Exception:
+                    pass
                 photo = ImageTk.PhotoImage(scaled_image)
                 
                 # 缓存结果（限制缓存大小）
@@ -623,6 +647,53 @@ class DistortionCoefficientGUI:
             self.roi_status_label.config(text=f"已选择ROI: ({coords[0]},{coords[1]}) -> ({coords[2]},{coords[3]})", foreground="green")
         else:
             self.roi_status_label.config(text="未选择ROI", foreground="red")
+
+    def _apply_watermark(self, pil_image):
+        """在 PIL Image 上添加半透明水印文本并返回新的 PIL Image。
+        水印文本从 self.watermark_text 获取；如果为空则直接返回原图。
+        """
+        try:
+            text = (self.watermark_text or "").strip()
+            if not text:
+                return pil_image
+
+            # 确保是 RGBA
+            base = pil_image.convert("RGBA")
+            w, h = base.size
+
+            overlay = Image.new("RGBA", base.size, (255, 255, 255, 0))
+            draw = ImageDraw.Draw(overlay)
+
+            # 字体大小随图像尺寸缩放
+            fontsize = max(12, int(min(w, h) / 18))
+            try:
+                font = ImageFont.truetype("arial.ttf", fontsize)
+            except Exception:
+                font = ImageFont.load_default()
+
+            # 文本样式
+            fill = (255, 255, 255, 70)  # 白色半透明
+            shadow = (0, 0, 0, 40)
+
+            # 在图像上绘制多处水印（中心和两对角）
+            positions = [
+                (w // 2, h // 2),
+                (w // 6, h // 6),
+                (5 * w // 6, 5 * h // 6),
+                (w // 6, 5 * h // 6),
+                (5 * w // 6, h // 6),
+            ]
+
+            for (x, y) in positions:
+                # shadow
+                draw.text((x+1, y+1), text, font=font, fill=shadow, anchor="mm")
+                draw.text((x, y), text, font=font, fill=fill, anchor="mm")
+
+            # 叠加并返回 RGB 图像
+            combined = Image.alpha_composite(base, overlay).convert("RGB")
+            return combined
+        except Exception:
+            return pil_image
     
     def browse_img(self):
         filename = filedialog.askopenfilename(
@@ -916,6 +987,11 @@ class DistortionCoefficientGUI:
             
             # 调整图像大小
             image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            # 添加水印到调整后的图像（非破坏原始）
+            try:
+                image = self._apply_watermark(image)
+            except Exception:
+                pass
             photo = ImageTk.PhotoImage(image)
             
             # 清除画布并显示新图像
@@ -951,6 +1027,10 @@ class DistortionCoefficientGUI:
             
             # 调整图像大小
             image = image.resize((new_width, new_height), Image.Resampling.LANCZOS)
+            try:
+                image = self._apply_watermark(image)
+            except Exception:
+                pass
             photo = ImageTk.PhotoImage(image)
             
             # 清除画布并显示新图像
