@@ -140,11 +140,21 @@ class Get_distort_coefficient:
         ax.set_ylabel('dev (posi_camera - posi_ideal)')
         ax.set_xlabel('pixel position of camera')
         ax.legend()
-        ax.grid(True)
+        ax.grid(True)        
         
         # 保存畸变曲线图到文件
         plt.savefig('fitting_curve.jpg', bbox_inches='tight', dpi=300)
         print("畸变曲线已保存到 fitting_curve.jpg")
+
+        fig, ax = plt.subplots(figsize=(8, 6))
+        ax.plot(posi_camera, posi_camera-posi_ideal-dev_fit, ".", label='loss', markersize=5)
+        ax.set_ylabel('dev - dev_fit (pix)')
+        ax.set_xlabel('pixel position of camera')
+        ax.legend()
+        ax.grid(True)
+        # 保存loss曲线到文件
+        plt.savefig('fitting_loss_curve.jpg', bbox_inches='tight', dpi=300)
+
         
         # 将matplotlib图形转换为PIL图像（用于返回）
         fig.canvas.draw()
